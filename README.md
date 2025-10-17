@@ -46,9 +46,6 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 ### Installation
 
 1. Clone or download this project:
-```bash
-cd "C:\Users\House Computer\Desktop\AI incident Response"
-```
 
 2. Install dependencies:
 ```bash
