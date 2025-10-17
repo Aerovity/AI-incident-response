@@ -22,7 +22,7 @@ func NewAnalyzer(apiKey string) *Analyzer {
 	client := openai.NewClient(apiKey)
 	return &Analyzer{
 		client: client,
-		model:  openai.GPT4, // Use GPT-4 for better reasoning, or GPT3Dot5Turbo for faster/cheaper
+		model:  openai.GPT3Dot5Turbo, // Using GPT-3.5-turbo (free tier compatible)
 	}
 }
 
