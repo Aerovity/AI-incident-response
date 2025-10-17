@@ -17,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -26,6 +28,9 @@ const (
 )
 
 func main() {
+	// Load .env file if it exists
+	_ = godotenv.Load()
+
 	// Command line flags
 	apiKey := flag.String("api-key", os.Getenv("OPENAI_API_KEY"), "OpenAI API key (or set OPENAI_API_KEY env var)")
 	demo := flag.Bool("demo", false, "Run automated demo scenario")

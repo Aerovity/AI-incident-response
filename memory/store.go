@@ -6,6 +6,7 @@ import (
 	"incident-ai/models"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -223,9 +224,9 @@ func (s *Store) UpdateIncidentStatus(id string, status models.IncidentStatus) er
 func (s *Store) PrintSummary() {
 	stats := s.GetStats()
 
-	log.Println("\n" + "=".Repeat(70))
+	log.Println("\n" + strings.Repeat("=", 70))
 	log.Println("[MEMORY] Incident Response System - Summary")
-	log.Println("=".Repeat(70))
+	log.Println(strings.Repeat("=", 70))
 	log.Printf("Total Incidents Handled: %v\n", stats["total_incidents"])
 	log.Printf("Successfully Resolved:   %v\n", stats["resolved"])
 	log.Printf("Failed:                  %v\n", stats["failed"])
@@ -238,18 +239,5 @@ func (s *Store) PrintSummary() {
 		}
 	}
 
-	log.Println("=".Repeat(70) + "\n")
+	log.Println(strings.Repeat("=", 70) + "\n")
 }
-
-// Helper to repeat strings (since Go doesn't have strings.Repeat in older versions)
-type repeatHelper struct{}
-
-func (repeatHelper) Repeat(s string, count int) string {
-	result := ""
-	for i := 0; i < count; i++ {
-		result += s
-	}
-	return result
-}
-
-var Repeat = repeatHelper{}.Repeat
