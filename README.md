@@ -125,8 +125,7 @@ Trigger the same incident type twice:
 # First time - uses AI
 curl "http://localhost:8080/trigger-incident?type=crash"
 # Wait for resolution...
-
-# Second time - uses cached fix (much faster!)
+#after cash way faster 
 curl "http://localhost:8080/trigger-incident?type=crash"
 ```
 
@@ -373,10 +372,5 @@ This is a demonstration project, but feel free to extend it for your own use cas
 - Delete `incident_memory.json` to start fresh
 - Ensure write permissions in the directory
 
-## 📞 Support
-
-For issues or questions, check the code comments or experiment with the system!
-
 ---
 
-**Built with ❤️ and 🤖 by Claude**
