@@ -134,10 +134,14 @@ func (id *IncidentDetector) createIncident(health models.HealthStatus) *models.I
 	// Fetch logs from the service
 	logs := id.fetchLogs()
 
+	// Assign priority based on incident type
+	priority := id.assignPriority(incidentType)
+
 	incident := &models.Incident{
 		ID:         uuid.New().String(),
 		Type:       incidentType,
 		Status:     models.StatusDetected,
+		Priority:   priority,
 		DetectedAt: time.Now(),
 		Symptoms:   symptoms,
 		Logs:       logs,
@@ -145,6 +149,22 @@ func (id *IncidentDetector) createIncident(health models.HealthStatus) *models.I
 	}
 
 	return incident
+}
+
+func (id *IncidentDetector) assignPriority(incidentType models.IncidentType) models.IncidentPriority {
+	// Assign priority based on incident severity
+	switch incidentType {
+	case models.ServiceDown, models.SecurityBreach, models.DatabaseError:
+		return models.PriorityCritical
+	case models.DependencyFailure, models.NetworkPartition, models.DiskFull:
+		return models.PriorityHigh
+	case models.MemoryLeak, models.ResourceExhaustion, models.ConfigError:
+		return models.PriorityMedium
+	case models.HighLatency:
+		return models.PriorityLow
+	default:
+		return models.PriorityMedium
+	}
 }
 
 func (id *IncidentDetector) analyzeSymptoms(health models.HealthStatus) (models.IncidentType, []string) {
@@ -182,11 +202,35 @@ func (id *IncidentDetector) analyzeSymptoms(health models.HealthStatus) (models.
 		return models.ServiceDown, symptoms
 	}
 
-	// Check logs for resource issues
+	// Check logs for specific incident types
 	if logs, ok := status["recent_logs"].([]interface{}); ok && len(logs) > 0 {
 		for _, logEntry := range logs {
 			if str, ok := logEntry.(string); ok {
-				if contains(str, "resource") || contains(str, "port blocked") || contains(str, "memory") {
+				if contains(str, "Database error") || contains(str, "query timeout") {
+					symptoms = append(symptoms, "Database error detected in logs")
+					return models.DatabaseError, symptoms
+				}
+				if contains(str, "latency") || contains(str, "response times") {
+					symptoms = append(symptoms, "High latency detected in logs")
+					return models.HighLatency, symptoms
+				}
+				if contains(str, "Memory leak") || contains(str, "heap usage") {
+					symptoms = append(symptoms, "Memory leak detected in logs")
+					return models.MemoryLeak, symptoms
+				}
+				if contains(str, "Security breach") || contains(str, "unauthorized") {
+					symptoms = append(symptoms, "Security breach detected in logs")
+					return models.SecurityBreach, symptoms
+				}
+				if contains(str, "Network partition") || contains(str, "unreachable") {
+					symptoms = append(symptoms, "Network partition detected in logs")
+					return models.NetworkPartition, symptoms
+				}
+				if contains(str, "Disk full") || contains(str, "storage capacity") {
+					symptoms = append(symptoms, "Disk full detected in logs")
+					return models.DiskFull, symptoms
+				}
+				if contains(str, "resource") || contains(str, "port blocked") {
 					symptoms = append(symptoms, "Resource exhaustion detected in logs")
 					return models.ResourceExhaustion, symptoms
 				}
