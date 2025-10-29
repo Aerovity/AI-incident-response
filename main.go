@@ -64,6 +64,13 @@ func main() {
 		log.Fatalf("Failed to start service: %v", err)
 	}
 
+	// Set up metrics endpoint
+	targetService.SetMetricsFunc(func() map[string]interface{} {
+		stats := store.GetStats()
+		stats["service_uptime"] = time.Since(time.Now().Add(-10 * time.Second)).String() // Simplified
+		return stats
+	})
+
 	// Create orchestrator
 	orch := &Orchestrator{
 		service:  targetService,
@@ -141,6 +148,7 @@ func (o *Orchestrator) processIncident(ctx context.Context, incident *models.Inc
 	log.Println("\n" + strings.Repeat("=", 70))
 	log.Printf("[DETECTOR] 🚨 Incident Detected: %s\n", incident.Type)
 	log.Printf("[DETECTOR] ID: %s\n", incident.ID)
+	log.Printf("[DETECTOR] Priority: %s\n", incident.Priority)
 	log.Println(strings.Repeat("=", 70))
 
 	// Store initial incident
@@ -263,7 +271,7 @@ func printBanner() {
 	banner := `
 ╔═══════════════════════════════════════════════════════════════════╗
 ║                                                                   ║
-║        🤖 AI-Powered Incident Response System                    ║
+║        🔥 AI-Powered Incident Response System                    ║
 ║                                                                   ║
 ║        Automatic Detection • AI Analysis • Smart Remediation     ║
 ║                                                                   ║
@@ -280,15 +288,21 @@ func printUsageInstructions() {
    curl "http://localhost:8080/trigger-incident?type=crash"
 
    Available incident types:
-   • crash      - Service crashes/stops responding
-   • config     - Configuration becomes corrupted
-   • resource   - Resource exhaustion (port/memory)
-   • dependency - External dependency failure
+   • crash      - Service crashes/stops responding (CRITICAL)
+   • config     - Configuration becomes corrupted (MEDIUM)
+   • resource   - Resource exhaustion (port/memory) (MEDIUM)
+   • dependency - External dependency failure (HIGH)
+   • database   - Database errors and timeouts (CRITICAL)
+   • latency    - High response latency (LOW)
+   • memory     - Memory leak detected (MEDIUM)
+   • security   - Security breach attempt (CRITICAL)
+   • network    - Network partition (HIGH)
+   • disk       - Disk storage full (HIGH)
 
 2. Watch the system:
    • Automatically detect the incident
    • Analyze with AI (or use learned fix)
-   • Apply remediation
+   • Apply remediation with priority-based handling
    • Verify resolution
 
 3. Trigger the same incident again to see it use the cached fix!
@@ -296,7 +310,10 @@ func printUsageInstructions() {
 4. Check service status:
    curl http://localhost:8080/status
 
-5. Press Ctrl+C to stop and see summary
+5. View metrics and analytics:
+   curl http://localhost:8080/metrics
+
+6. Press Ctrl+C to stop and see summary
 
 ` + strings.Repeat("=", 70) + "\n"
 

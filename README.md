@@ -1,4 +1,4 @@
-# 🤖 AI-Powered Incident Response System
+# 🔥 AI-Powered Incident Response System
 
 An intelligent incident detection and auto-remediation system built in Go, inspired by incident.io's auto-remediation capabilities. The system uses OpenAI to analyze incidents and automatically apply fixes, while learning from past incidents to respond faster in the future.
 
@@ -8,7 +8,12 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 - **🤖 AI-Powered Analysis**: Uses OpenAI GPT-4 to diagnose root causes and suggest fixes
 - **⚡ Smart Remediation**: Automatically applies fixes to resolve incidents
 - **🧠 Learning System**: Remembers successful fixes and applies them instantly on recurrence
-- **📊 Multiple Incident Types**: Handles service crashes, config errors, resource exhaustion, and dependency failures
+- **📊 Extended Incident Types**: Handles 10+ incident types including crashes, config errors, database issues, security breaches, and more
+- **🎯 Incident Prioritization**: Automatic priority assignment (Critical, High, Medium, Low)
+- **⏮️ Rollback Capabilities**: Capture state before fixes and rollback if needed
+- **🐳 Docker Integration**: Full Docker and docker-compose support
+- **📈 Metrics & Analytics**: HTTP endpoint for real-time statistics and insights
+- **🔧 Custom Remediation Scripts**: Support for user-defined bash/batch scripts per incident type
 - **✅ Verification**: Confirms incidents are truly resolved before marking as complete
 - **💾 Persistent Memory**: Stores incident history and learned fixes to disk
 
@@ -171,27 +176,61 @@ Press `Ctrl+C` to stop the system and see a summary of all incidents handled.
 [MEMORY] Learned fix for SERVICE_DOWN incidents
 ```
 
-## �� Incident Types
+## 🔥 Incident Types
 
-### 1. Service Crash (`crash`)
-- **Symptom**: Service stops responding to health checks
-- **Typical Fix**: Restart the service
-- **Use Case**: Process crashes, hangs, or becomes unresponsive
+### Critical Priority
+1. **Service Crash (`crash` / `SERVICE_DOWN`)**
+   - Service stops responding to health checks
+   - Typical Fix: Restart the service
+   - Priority: **CRITICAL**
 
-### 2. Configuration Error (`config`)
-- **Symptom**: Invalid configuration values detected
-- **Typical Fix**: Restore valid configuration and restart
-- **Use Case**: Corrupted config files, invalid parameters
+2. **Security Breach (`security` / `SECURITY_BREACH`)**
+   - Unauthorized access attempts detected
+   - Typical Fix: Block access, restart service, audit logs
+   - Priority: **CRITICAL**
 
-### 3. Resource Exhaustion (`resource`)
-- **Symptom**: Resources (ports, memory) become unavailable
-- **Typical Fix**: Clear resources and restart
-- **Use Case**: Port conflicts, memory leaks, disk full
+3. **Database Error (`database` / `DATABASE_ERROR`)**
+   - Query timeouts, connection pool exhausted
+   - Typical Fix: Reset connections, restart service
+   - Priority: **CRITICAL**
 
-### 4. Dependency Failure (`dependency`)
-- **Symptom**: External dependency (database) unreachable
-- **Typical Fix**: Fix connection string and reconnect
-- **Use Case**: Database down, API unavailable, network issues
+### High Priority
+4. **Dependency Failure (`dependency` / `DEPENDENCY_FAILURE`)**
+   - External dependency unreachable
+   - Typical Fix: Fix connection string and reconnect
+   - Priority: **HIGH**
+
+5. **Network Partition (`network` / `NETWORK_PARTITION`)**
+   - Cluster nodes unreachable
+   - Typical Fix: Restore network connectivity
+   - Priority: **HIGH**
+
+6. **Disk Full (`disk` / `DISK_FULL`)**
+   - Storage capacity exceeded
+   - Typical Fix: Clear logs, free up space
+   - Priority: **HIGH**
+
+### Medium Priority
+7. **Configuration Error (`config` / `CONFIG_ERROR`)**
+   - Invalid configuration values detected
+   - Typical Fix: Restore valid configuration and restart
+   - Priority: **MEDIUM**
+
+8. **Resource Exhaustion (`resource` / `RESOURCE_EXHAUSTION`)**
+   - Ports or memory become unavailable
+   - Typical Fix: Clear resources and restart
+   - Priority: **MEDIUM**
+
+9. **Memory Leak (`memory` / `MEMORY_LEAK`)**
+   - Heap usage growing abnormally
+   - Typical Fix: Restart service, investigate code
+   - Priority: **MEDIUM**
+
+### Low Priority
+10. **High Latency (`latency` / `HIGH_LATENCY`)**
+    - Response times exceeding threshold
+    - Typical Fix: Optimize queries, scale resources
+    - Priority: **LOW**
 
 ## 📊 Memory System
 
@@ -330,17 +369,92 @@ incident-ai/
 - The target service is for simulation only - not production-ready
 - In production, you'd want authentication, rate limiting, and proper error handling
 
-## 🚀 Future Enhancements
+## 🐳 Docker Usage
 
-- [ ] Support for more incident types
+### Building and Running with Docker
+
+```bash
+# Build the Docker image
+docker build -t incident-ai .
+
+# Run the container
+docker run -p 8080:8080 -e OPENAI_API_KEY=sk-your-key incident-ai
+
+# Or use docker-compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the container
+docker-compose down
+```
+
+### Environment Variables
+
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `SERVICE_PORT`: Port for the service (default: 8080)
+
+## 📈 Metrics & Analytics
+
+Access real-time metrics via HTTP:
+
+```bash
+curl http://localhost:8080/metrics
+```
+
+Returns JSON with:
+- Total incidents handled
+- Resolution success rate
+- Incidents by type
+- Learned fixes available
+- Average resolution time
+- Priority distribution
+
+## 🔧 Custom Remediation Scripts
+
+Place custom scripts in the `scripts/` directory:
+
+```bash
+scripts/
+├── SERVICE_DOWN.sh       # Handles service crashes
+├── CONFIG_ERROR.sh       # Handles config issues
+├── DATABASE_ERROR.bat    # Windows script for DB issues
+└── README.md
+```
+
+Scripts receive the incident ID as the first argument and should exit with code 0 on success.
+
+## ⏮️ Rollback Capabilities
+
+The system automatically captures state before applying fixes:
+- Configuration backup
+- Service state snapshot
+- Rollback steps generation
+
+To manually trigger a rollback (requires code integration):
+```go
+err := executor.Rollback(incident)
+```
+
+## 🚀 Completed Features
+
+- [x] Support for 10+ incident types
+- [x] Incident prioritization (Critical/High/Medium/Low)
+- [x] Metrics and analytics HTTP endpoint
+- [x] Docker integration with docker-compose
+- [x] Custom remediation scripts support
+- [x] Rollback capabilities with state capture
+- [x] Enhanced logging and monitoring
+
+## 🚧 Future Enhancements
+
 - [ ] Slack/email notifications
 - [ ] Web dashboard for visualization
-- [ ] Metrics and analytics
 - [ ] Multi-service support
 - [ ] Kubernetes integration
-- [ ] Custom remediation scripts
-- [ ] Incident prioritization
-- [ ] Rollback capabilities
+- [ ] Webhook support for external integrations
+- [ ] Advanced analytics and trending
 
 ## 📄 License
 

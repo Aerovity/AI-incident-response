@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  incident-ai:
+    build: .
+    container_name: incident-response-system
+    ports:
+      - "8080:8080"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SERVICE_PORT=8080
+    volumes:
+      # Mount incident memory file to persist data
+      - ./incident_memory.json:/app/incident_memory.json
+      # Mount custom scripts directory
+      - ./scripts:/app/scripts:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Add a monitoring service
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+
+networks:
+  default:
+    name: incident-response-network

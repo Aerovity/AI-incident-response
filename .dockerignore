@@ -1,0 +1,32 @@
+# Ignore git files
+.git
+.gitignore
+
+# Ignore documentation
+*.md
+!scripts/README.md
+
+# Ignore build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Ignore test files
+*_test.go
+
+# Ignore IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore env files (will be passed via docker-compose)
+.env
+
+# Keep incident memory file small
+incident_memory.json

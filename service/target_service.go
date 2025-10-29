@@ -20,6 +20,7 @@ type TargetService struct {
 	server        *http.Server
 	errorLogs     []string
 	maxLogs       int
+	metricsFunc   func() map[string]interface{}
 }
 
 // NewTargetService creates a new target service
@@ -60,6 +61,9 @@ func (ts *TargetService) Start() error {
 
 	// Status endpoint
 	mux.HandleFunc("/status", ts.handleStatus)
+
+	// Metrics endpoint (placeholder - will be populated by main)
+	mux.HandleFunc("/metrics", ts.handleMetrics)
 
 	ts.server = &http.Server{
 		Addr:    ":" + ts.port,
@@ -217,10 +221,46 @@ func (ts *TargetService) handleTriggerIncident(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Incident triggered: DEPENDENCY_FAILURE\n")
 
+	case "database", "DATABASE_ERROR":
+		ts.isHealthy = false
+		ts.addLog("Database error - query timeout or connection pool exhausted")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Incident triggered: DATABASE_ERROR\n")
+
+	case "latency", "HIGH_LATENCY":
+		ts.isHealthy = false
+		ts.addLog("High latency detected - response times exceeding threshold")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Incident triggered: HIGH_LATENCY\n")
+
+	case "memory", "MEMORY_LEAK":
+		ts.isHealthy = false
+		ts.addLog("Memory leak detected - heap usage growing abnormally")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Incident triggered: MEMORY_LEAK\n")
+
+	case "security", "SECURITY_BREACH":
+		ts.isHealthy = false
+		ts.addLog("Security breach detected - unauthorized access attempt")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Incident triggered: SECURITY_BREACH\n")
+
+	case "network", "NETWORK_PARTITION":
+		ts.isHealthy = false
+		ts.addLog("Network partition detected - cluster nodes unreachable")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Incident triggered: NETWORK_PARTITION\n")
+
+	case "disk", "DISK_FULL":
+		ts.isHealthy = false
+		ts.addLog("Disk full - storage capacity exceeded")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Incident triggered: DISK_FULL\n")
+
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Unknown incident type: %s\n", incidentType)
-		fmt.Fprintf(w, "Valid types: crash, config, resource, dependency\n")
+		fmt.Fprintf(w, "Valid types: crash, config, resource, dependency, database, latency, memory, security, network, disk\n")
 		return
 	}
 }
@@ -254,4 +294,24 @@ func (ts *TargetService) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"config":     ts.config,
 		"recent_logs": ts.errorLogs,
 	})
+}
+
+func (ts *TargetService) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if ts.metricsFunc != nil {
+		metrics := ts.metricsFunc()
+		json.NewEncoder(w).Encode(metrics)
+	} else {
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Metrics not configured",
+		})
+	}
+}
+
+// SetMetricsFunc sets the function to retrieve metrics
+func (ts *TargetService) SetMetricsFunc(f func() map[string]interface{}) {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	ts.metricsFunc = f
 }

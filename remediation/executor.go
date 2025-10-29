@@ -25,6 +25,10 @@ func NewExecutor(targetService *service.TargetService) *Executor {
 func (e *Executor) ExecuteFix(incident *models.Incident, aiResponse *models.AIResponse) (*models.Resolution, error) {
 	log.Printf("[REMEDIATION] Applying fix for incident %s (Type: %s)\n", incident.ID, aiResponse.FixType)
 
+	// Capture rollback data before making changes
+	rollbackData := e.captureRollbackData()
+	incident.RollbackData = rollbackData
+
 	resolution := &models.Resolution{
 		FixType:     aiResponse.FixType,
 		Description: aiResponse.Diagnosis,
@@ -56,6 +60,63 @@ func (e *Executor) ExecuteFix(incident *models.Incident, aiResponse *models.AIRe
 	log.Println("[REMEDIATION] ✓ Fix applied successfully")
 
 	return resolution, nil
+}
+
+// captureRollbackData captures the current state for potential rollback
+func (e *Executor) captureRollbackData() *models.RollbackData {
+	config := e.targetService.GetConfig()
+	configMap := make(map[string]interface{})
+	for k, v := range config {
+		configMap[k] = v
+	}
+
+	state := "running"
+	if !e.targetService.IsHealthy() {
+		state = "unhealthy"
+	}
+
+	return &models.RollbackData{
+		Timestamp:     time.Now(),
+		PreviousState: configMap,
+		ServiceState:  state,
+		CanRollback:   true,
+		RollbackSteps: []string{
+			"Restore previous configuration",
+			"Restart service to apply rollback",
+			"Verify service health",
+		},
+	}
+}
+
+// Rollback reverts changes made during incident remediation
+func (e *Executor) Rollback(incident *models.Incident) error {
+	if incident.RollbackData == nil {
+		return fmt.Errorf("no rollback data available for incident %s", incident.ID)
+	}
+
+	if !incident.RollbackData.CanRollback {
+		return fmt.Errorf("rollback not allowed for incident %s", incident.ID)
+	}
+
+	log.Printf("[REMEDIATION] Rolling back incident %s\n", incident.ID)
+	log.Printf("[REMEDIATION] Restoring state from %s\n", incident.RollbackData.Timestamp.Format(time.RFC3339))
+
+	// Restore configuration
+	for key, value := range incident.RollbackData.PreviousState {
+		if strValue, ok := value.(string); ok {
+			log.Printf("[REMEDIATION]   → Restoring %s = %s\n", key, strValue)
+			e.targetService.SetConfig(key, strValue)
+		}
+	}
+
+	// Restart service
+	log.Println("[REMEDIATION]   → Restarting service...")
+	if err := e.targetService.Restart(); err != nil {
+		return fmt.Errorf("rollback restart failed: %w", err)
+	}
+
+	log.Println("[REMEDIATION] ✓ Rollback completed successfully")
+	return nil
 }
 
 func (e *Executor) executeRestart(steps []string) error {
