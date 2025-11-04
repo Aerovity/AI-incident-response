@@ -32,17 +32,18 @@ func main() {
 	_ = godotenv.Load()
 
 	// Command line flags
-	apiKey := flag.String("api-key", os.Getenv("OPENAI_API_KEY"), "OpenAI API key (or set OPENAI_API_KEY env var)")
+	apiKey := flag.String("api-key", os.Getenv("CLOUDFLARE_API_KEY"), "Cloudflare API key (or set CLOUDFLARE_API_KEY env var)")
+	accountID := flag.String("account-id", os.Getenv("CLOUDFLARE_ACCOUNT_ID"), "Cloudflare Account ID (or set CLOUDFLARE_ACCOUNT_ID env var)")
 	demo := flag.Bool("demo", false, "Run automated demo scenario")
-	useAI := flag.Bool("use-ai", true, "Use OpenAI for analysis (false = use fallback logic)")
+	useAI := flag.Bool("use-ai", true, "Use Cloudflare AI for analysis (false = use fallback logic)")
 	flag.Parse()
 
 	printBanner()
 
-	// Validate API key if AI is enabled
-	if *useAI && *apiKey == "" {
-		log.Println("⚠️  No OpenAI API key provided. Using fallback analysis mode.")
-		log.Println("   To use OpenAI: set OPENAI_API_KEY env var or use -api-key flag")
+	// Validate API credentials if AI is enabled
+	if *useAI && (*apiKey == "" || *accountID == "") {
+		log.Println("⚠️  No Cloudflare API credentials provided. Using fallback analysis mode.")
+		log.Println("   To use Cloudflare AI: set CLOUDFLARE_API_KEY and CLOUDFLARE_ACCOUNT_ID env vars")
 		*useAI = false
 	}
 
@@ -50,7 +51,7 @@ func main() {
 	log.Println("\n[SYSTEM] Initializing Incident Response System...")
 
 	targetService := service.NewTargetService(servicePort)
-	analyzer := ai.NewAnalyzer(*apiKey)
+	analyzer := ai.NewAnalyzer(*apiKey, *accountID)
 	executor := remediation.NewExecutor(targetService)
 	store := memory.NewStore(memoryFile)
 	detector := monitor.NewIncidentDetector(
@@ -190,10 +191,10 @@ func (o *Orchestrator) processIncident(ctx context.Context, incident *models.Inc
 	var err error
 
 	if o.useAI {
-		log.Println("[AI] Calling OpenAI for incident analysis...")
+		log.Println("[AI] Calling Cloudflare AI for incident analysis...")
 		aiResponse, err = o.analyzer.AnalyzeIncident(ctx, incident)
 		if err != nil {
-			log.Printf("[AI] ❌ OpenAI error: %v\n", err)
+			log.Printf("[AI] ❌ Cloudflare AI error: %v\n", err)
 			log.Println("[AI] Falling back to rule-based analysis...")
 			aiResponse = o.analyzer.GetQuickAnalysis(incident)
 		}

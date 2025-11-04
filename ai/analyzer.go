@@ -1,65 +1,119 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"incident-ai/models"
+	"io"
 	"log"
+	"net/http"
 	"strings"
-
-	openai "github.com/sashabaranov/go-openai"
 )
+
+// CloudflareAIRequest represents the request format for Cloudflare AI
+type CloudflareAIRequest struct {
+	Messages []CloudflareMessage `json:"messages"`
+}
+
+// CloudflareMessage represents a message in the conversation
+type CloudflareMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// CloudflareAIResponse represents the response from Cloudflare AI
+type CloudflareAIResponse struct {
+	Result struct {
+		Response string `json:"response"`
+	} `json:"result"`
+	Success bool     `json:"success"`
+	Errors  []string `json:"errors,omitempty"`
+}
 
 // Analyzer uses AI to analyze incidents and suggest fixes
 type Analyzer struct {
-	client *openai.Client
-	model  string
+	apiKey    string
+	accountID string
+	model     string
+	baseURL   string
 }
 
-// NewAnalyzer creates a new AI analyzer
-func NewAnalyzer(apiKey string) *Analyzer {
-	client := openai.NewClient(apiKey)
+// NewAnalyzer creates a new AI analyzer using Cloudflare AI
+func NewAnalyzer(apiKey, accountID string) *Analyzer {
 	return &Analyzer{
-		client: client,
-		model:  openai.GPT3Dot5Turbo, // Using GPT-3.5-turbo (free tier compatible)
+		apiKey:    apiKey,
+		accountID: accountID,
+		model:     "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+		baseURL:   fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s", accountID, "@cf/meta/llama-3.3-70b-instruct-fp8-fast"),
 	}
 }
 
-// AnalyzeIncident sends incident details to OpenAI and gets back a fix
+// AnalyzeIncident sends incident details to Cloudflare AI and gets back a fix
 func (a *Analyzer) AnalyzeIncident(ctx context.Context, incident *models.Incident) (*models.AIResponse, error) {
 	log.Printf("[AI] Analyzing incident: %s (Type: %s)\n", incident.ID, incident.Type)
 
 	prompt := a.buildPrompt(incident)
 
-	resp, err := a.client.CreateChatCompletion(
-		ctx,
-		openai.ChatCompletionRequest{
-			Model: a.model,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: a.getSystemPrompt(),
-				},
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: prompt,
-				},
+	// Build the request payload
+	requestBody := CloudflareAIRequest{
+		Messages: []CloudflareMessage{
+			{
+				Role:    "system",
+				Content: a.getSystemPrompt(),
 			},
-			Temperature: 0.3, // Lower temperature for more focused/deterministic responses
+			{
+				Role:    "user",
+				Content: prompt,
+			},
 		},
-	)
+	}
 
+	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("OpenAI API error: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	if len(resp.Choices) == 0 {
-		return nil, fmt.Errorf("no response from OpenAI")
+	// Create HTTP request
+	req, err := http.NewRequestWithContext(ctx, "POST", a.baseURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	content := resp.Choices[0].Message.Content
-	log.Printf("[AI] Received response from OpenAI\n")
+	req.Header.Set("Authorization", "Bearer "+a.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Cloudflare AI API error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Cloudflare AI API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse Cloudflare response
+	var cfResponse CloudflareAIResponse
+	if err := json.Unmarshal(body, &cfResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse Cloudflare response: %w", err)
+	}
+
+	if !cfResponse.Success {
+		return nil, fmt.Errorf("Cloudflare AI API error: %v", cfResponse.Errors)
+	}
+
+	content := cfResponse.Result.Response
+	log.Printf("[AI] Received response from Cloudflare AI\n")
 
 	// Parse the JSON response
 	aiResponse, err := a.parseResponse(content)
