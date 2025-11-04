@@ -1,11 +1,11 @@
 # 🔥 AI-Powered Incident Response System
 
-An intelligent incident detection and auto-remediation system built in Go, inspired by incident.io's auto-remediation capabilities. The system uses OpenAI to analyze incidents and automatically apply fixes, while learning from past incidents to respond faster in the future.
+An intelligent incident detection and auto-remediation system built in Go, inspired by incident.io's auto-remediation capabilities. The system uses Cloudflare AI (Llama 3.3) to analyze incidents and automatically apply fixes, while learning from past incidents to respond faster in the future.
 
 ## ✨ Features
 
 - **🔍 Automatic Incident Detection**: Continuous health monitoring and incident detection
-- **🤖 AI-Powered Analysis**: Uses OpenAI GPT-4 to diagnose root causes and suggest fixes
+- **🤖 AI-Powered Analysis**: Uses Cloudflare AI (Llama 3.3) to diagnose root causes and suggest fixes
 - **⚡ Smart Remediation**: Automatically applies fixes to resolve incidents
 - **🧠 Learning System**: Remembers successful fixes and applies them instantly on recurrence
 - **📊 Extended Incident Types**: Handles 10+ incident types including crashes, config errors, database issues, security breaches, and more
@@ -36,7 +36,7 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 
 1. **Target Service** (`service/`) - Simulated HTTP service that can experience incidents
 2. **Monitor/Detector** (`monitor/`) - Polls service health and detects incidents
-3. **AI Analyzer** (`ai/`) - Integrates with OpenAI to analyze incidents and suggest fixes
+3. **AI Analyzer** (`ai/`) - Integrates with Cloudflare AI to analyze incidents and suggest fixes
 4. **Remediation Executor** (`remediation/`) - Applies fixes to resolve incidents
 5. **Memory Store** (`memory/`) - Stores incident history and learned fixes
 6. **Models** (`models/`) - Core data structures
@@ -46,7 +46,8 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 ### Prerequisites
 
 - Go 1.21 or higher
-- OpenAI API key (optional - system works with fallback logic if not provided)
+- Cloudflare Account with API access (optional - system works with fallback logic if not provided)
+- Cloudflare API Key and Account ID
 
 ### Installation
 
@@ -57,23 +58,32 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 go mod download
 ```
 
-3. Set your OpenAI API key (optional):
+3. Set your Cloudflare credentials (optional):
 ```bash
 # Windows
-set OPENAI_API_KEY=sk-your-key-here
+set CLOUDFLARE_API_KEY=your-api-key-here
+set CLOUDFLARE_ACCOUNT_ID=your-account-id-here
 
 # Linux/Mac
-export OPENAI_API_KEY=sk-your-key-here
+export CLOUDFLARE_API_KEY=your-api-key-here
+export CLOUDFLARE_ACCOUNT_ID=your-account-id-here
 ```
+
+**How to get Cloudflare credentials:**
+1. Log in to your Cloudflare dashboard
+2. Go to "Workers & Pages" → "Overview"
+3. Your Account ID is displayed on the right side
+4. For API Key: Go to "My Profile" → "API Tokens" → "Create Token"
+5. Use the "Workers AI" template or create a custom token with Workers AI permissions
 
 ### Running the System
 
-**Basic mode (with OpenAI):**
+**Basic mode (with Cloudflare AI):**
 ```bash
 go run main.go
 ```
 
-**Without OpenAI (fallback mode):**
+**Without Cloudflare AI (fallback mode):**
 ```bash
 go run main.go -use-ai=false
 ```
@@ -83,9 +93,9 @@ go run main.go -use-ai=false
 go run main.go -demo
 ```
 
-**With explicit API key:**
+**With explicit credentials:**
 ```bash
-go run main.go -api-key=sk-your-key-here
+go run main.go -api-key=your-api-key -account-id=your-account-id
 ```
 
 ## 📖 Usage
@@ -113,7 +123,7 @@ curl "http://localhost:8080/trigger-incident?type=dependency"
 The system will:
 1. 🔍 Detect the unhealthy service
 2. 📋 Check if it has seen this incident type before
-3. 🤖 If new: Ask OpenAI for diagnosis and fix
+3. 🤖 If new: Ask Cloudflare AI for diagnosis and fix
 4. ⚡ If known: Apply cached fix instantly (no AI call needed!)
 5. 🔧 Execute the remediation steps
 6. ✅ Verify the service is healthy again
@@ -152,7 +162,7 @@ Press `Ctrl+C` to stop the system and see a summary of all incidents handled.
 [DETECTOR] ID: 550e8400-e29b-41d4-a716-446655440000
 ══════════════════════════════════════════════════════════════════════
 [MEMORY] No cached fix found - using AI analysis
-[AI] Calling OpenAI for incident analysis...
+[AI] Calling Cloudflare AI for incident analysis...
 [AI] 📊 Diagnosis: Service process has crashed or stopped responding
 [AI] 🔧 Fix Type: restart
 [AI] 📝 Steps: 3
@@ -265,13 +275,15 @@ The system stores incident data in `incident_memory.json`:
 
 ### Command Line Flags
 
-- `-api-key string`: OpenAI API key (defaults to `OPENAI_API_KEY` env var)
-- `-use-ai bool`: Use OpenAI for analysis (default: true)
+- `-api-key string`: Cloudflare API key (defaults to `CLOUDFLARE_API_KEY` env var)
+- `-account-id string`: Cloudflare Account ID (defaults to `CLOUDFLARE_ACCOUNT_ID` env var)
+- `-use-ai bool`: Use Cloudflare AI for analysis (default: true)
 - `-demo bool`: Run automated demo scenario (default: false)
 
 ### Environment Variables
 
-- `OPENAI_API_KEY`: Your OpenAI API key
+- `CLOUDFLARE_API_KEY`: Your Cloudflare API key
+- `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare Account ID
 
 ### Constants (in main.go)
 
@@ -304,7 +316,7 @@ This will:
 
 ### Fallback Mode
 
-Test without OpenAI API key:
+Test without Cloudflare AI credentials:
 
 ```bash
 go run main.go -use-ai=false
@@ -326,7 +338,7 @@ incident-ai/
 ├── monitor/
 │   └── detector.go          # Health monitoring and incident detection
 ├── ai/
-│   └── analyzer.go          # OpenAI integration and analysis
+│   └── analyzer.go          # Cloudflare AI integration and analysis
 ├── remediation/
 │   └── executor.go          # Fix execution and service manipulation
 └── memory/
@@ -343,8 +355,8 @@ incident-ai/
 ### Analysis Phase
 1. Checks memory for previously learned fix
 2. If found: Uses cached fix (fast path ⚡)
-3. If not found: Calls OpenAI with incident details
-4. OpenAI returns diagnosis and fix steps
+3. If not found: Calls Cloudflare AI with incident details
+4. Cloudflare AI (Llama 3.3) returns diagnosis and fix steps
 
 ### Remediation Phase
 1. Executor applies fix based on type:
@@ -378,7 +390,10 @@ incident-ai/
 docker build -t incident-ai .
 
 # Run the container
-docker run -p 8080:8080 -e OPENAI_API_KEY=sk-your-key incident-ai
+docker run -p 8080:8080 \
+  -e CLOUDFLARE_API_KEY=your-api-key \
+  -e CLOUDFLARE_ACCOUNT_ID=your-account-id \
+  incident-ai
 
 # Or use docker-compose
 docker-compose up -d
@@ -392,7 +407,8 @@ docker-compose down
 
 ### Environment Variables
 
-- `OPENAI_API_KEY`: Your OpenAI API key
+- `CLOUDFLARE_API_KEY`: Your Cloudflare API key
+- `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare Account ID
 - `SERVICE_PORT`: Port for the service (default: 8080)
 
 ## 📈 Metrics & Analytics
@@ -466,9 +482,9 @@ This is a demonstration project, but feel free to extend it for your own use cas
 
 ## ❓ Troubleshooting
 
-### "No OpenAI API key provided"
-- Set the `OPENAI_API_KEY` environment variable, or
-- Use the `-api-key` flag, or
+### "No Cloudflare API credentials provided"
+- Set the `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` environment variables, or
+- Use the `-api-key` and `-account-id` flags, or
 - Run with `-use-ai=false` for fallback mode
 
 ### "Port already in use"
