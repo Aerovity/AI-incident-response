@@ -2,8 +2,29 @@
 
 An intelligent incident detection and auto-remediation system built in Go, inspired by incident.io's auto-remediation capabilities. The system uses Cloudflare AI (Llama 3.3) to analyze incidents and automatically apply fixes, while learning from past incidents to respond faster in the future.
 
+## 🎯 Quick Start (3 Steps)
+
+```bash
+# 1. Login to Cloudflare
+npx wrangler login
+
+# 2. Run setup wizard
+go run main.go -setup
+
+# 3. Start the system
+go run main.go
+```
+
+That's it! See [SETUP.md](SETUP.md) for detailed instructions.
+
 ## ✨ Features
 
+### 🆓 Uses Cloudflare's Free AI Models
+- **Llama 3.3 70B** for incident analysis (via Cloudflare Workers AI)
+- **10,000 free AI requests per day** on Cloudflare's free tier
+- No OpenAI API key needed!
+
+### Core Features
 - **🔍 Automatic Incident Detection**: Continuous health monitoring and incident detection
 - **🤖 AI-Powered Analysis**: Uses Cloudflare AI (Llama 3.3) to diagnose root causes and suggest fixes
 - **⚡ Smart Remediation**: Automatically applies fixes to resolve incidents
@@ -46,8 +67,8 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 ### Prerequisites
 
 - Go 1.21 or higher
-- Cloudflare Account with API access (optional - system works with fallback logic if not provided)
-- Cloudflare API Key and Account ID
+- Node.js and npm (for wrangler)
+- Cloudflare Account (free tier works!)
 
 ### Installation
 
@@ -58,7 +79,38 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 go mod download
 ```
 
-3. Set your Cloudflare credentials (optional):
+3. **Authenticate with Cloudflare (using Wrangler):**
+
+```bash
+# Install wrangler globally (if not already installed)
+npm install -g wrangler
+
+# Login to Cloudflare
+npx wrangler login
+```
+
+This will:
+- Open your browser
+- Ask you to login to Cloudflare
+- Authorize the application
+- Store your credentials locally
+
+4. **(Optional) Setup wrangler configuration:**
+
+```bash
+# Automated setup - will detect your account ID
+go run main.go -setup
+
+# Or manually run:
+npx wrangler whoami
+# Copy your Account ID and add it to wrangler.toml:
+# account_id = "your-account-id-here"
+```
+
+**Alternative: Environment Variables (Legacy)**
+
+If you prefer environment variables instead of wrangler:
+
 ```bash
 # Windows
 set CLOUDFLARE_API_KEY=your-api-key-here
@@ -68,13 +120,6 @@ set CLOUDFLARE_ACCOUNT_ID=your-account-id-here
 export CLOUDFLARE_API_KEY=your-api-key-here
 export CLOUDFLARE_ACCOUNT_ID=your-account-id-here
 ```
-
-**How to get Cloudflare credentials:**
-1. Log in to your Cloudflare dashboard
-2. Go to "Workers & Pages" → "Overview"
-3. Your Account ID is displayed on the right side
-4. For API Key: Go to "My Profile" → "API Tokens" → "Create Token"
-5. Use the "Workers AI" template or create a custom token with Workers AI permissions
 
 ### Running the System
 
@@ -93,9 +138,9 @@ go run main.go -use-ai=false
 go run main.go -demo
 ```
 
-**With explicit credentials:**
+**Setup wizard:**
 ```bash
-go run main.go -api-key=your-api-key -account-id=your-account-id
+go run main.go -setup
 ```
 
 ## 📖 Usage
@@ -575,10 +620,37 @@ This is a demonstration project, but feel free to extend it for your own use cas
 
 ## ❓ Troubleshooting
 
-### "No Cloudflare API credentials provided"
-- Set the `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` environment variables, or
-- Use the `-api-key` and `-account-id` flags, or
-- Run with `-use-ai=false` for fallback mode
+### "Cloudflare Authentication Not Found"
+**Solution 1: Use Wrangler (Recommended)**
+```bash
+# Login to Cloudflare
+npx wrangler login
+
+# Run setup wizard
+go run main.go -setup
+
+# Start the system
+go run main.go
+```
+
+**Solution 2: Use Environment Variables**
+```bash
+# Set credentials manually
+export CLOUDFLARE_API_KEY=your-key
+export CLOUDFLARE_ACCOUNT_ID=your-account-id
+
+# Or run without AI
+go run main.go -use-ai=false
+```
+
+### "Wrangler not found"
+```bash
+# Install wrangler globally
+npm install -g wrangler
+
+# Verify installation
+npx wrangler --version
+```
 
 ### "Port already in use"
 - Stop any other processes using port 8080
