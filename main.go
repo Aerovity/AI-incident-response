@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"incident-ai/ai"
+	"incident-ai/analytics"
 	"incident-ai/memory"
 	"incident-ai/models"
 	"incident-ai/monitor"
@@ -54,6 +55,7 @@ func main() {
 	analyzer := ai.NewAnalyzer(*apiKey, *accountID)
 	executor := remediation.NewExecutor(targetService)
 	store := memory.NewStore(memoryFile)
+	analyticsEngine := analytics.NewEngine()
 	detector := monitor.NewIncidentDetector(
 		fmt.Sprintf("http://localhost:%s", servicePort),
 		checkInterval,
@@ -70,6 +72,13 @@ func main() {
 		stats := store.GetStats()
 		stats["service_uptime"] = time.Since(time.Now().Add(-10 * time.Second)).String() // Simplified
 		return stats
+	})
+
+	// Set up analytics endpoint
+	targetService.SetAnalyticsFunc(func() interface{} {
+		incidents := store.GetAllIncidents()
+		report := analyticsEngine.GenerateReport(incidents)
+		return report
 	})
 
 	// Create orchestrator
@@ -311,10 +320,13 @@ func printUsageInstructions() {
 4. Check service status:
    curl http://localhost:8080/status
 
-5. View metrics and analytics:
+5. View basic metrics:
    curl http://localhost:8080/metrics
 
-6. Press Ctrl+C to stop and see summary
+6. View advanced analytics & trends:
+   curl http://localhost:8080/analytics
+
+7. Press Ctrl+C to stop and see summary
 
 ` + strings.Repeat("=", 70) + "\n"
 

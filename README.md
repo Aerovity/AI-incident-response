@@ -149,7 +149,19 @@ The second incident will be resolved instantly using the learned fix!
 curl http://localhost:8080/status
 ```
 
-### 5. View Summary
+### 5. View Advanced Analytics
+
+```bash
+curl http://localhost:8080/analytics
+```
+
+Get comprehensive analytics including:
+- Incident trends (hourly/daily)
+- Resolution time statistics
+- Success rates and predictions
+- Hot spots and problem areas
+
+### 6. View Summary
 
 Press `Ctrl+C` to stop the system and see a summary of all incidents handled.
 
@@ -413,6 +425,8 @@ docker-compose down
 
 ## 📈 Metrics & Analytics
 
+### Basic Metrics
+
 Access real-time metrics via HTTP:
 
 ```bash
@@ -424,8 +438,83 @@ Returns JSON with:
 - Resolution success rate
 - Incidents by type
 - Learned fixes available
-- Average resolution time
-- Priority distribution
+
+### Advanced Analytics & Trending
+
+Access comprehensive analytics and trends:
+
+```bash
+curl http://localhost:8080/analytics
+```
+
+Returns detailed JSON report including:
+
+**Summary Statistics:**
+- Total incidents, resolved, failed
+- Success rate percentage
+- Resolution time statistics (avg, median, fastest, slowest)
+- Cached fix usage rate
+- AI calls made
+
+**Trends:**
+- Hourly incident trend with direction (increasing/decreasing/stable)
+- Daily incident trend with change rate
+- Per-type trends showing which incident types are growing or declining
+
+**Hot Spots:**
+- Most frequent incident type
+- Most problematic type (highest failure rate)
+- Time distribution (incidents by hour of day)
+
+**Recent Activity:**
+- Incidents in last 24 hours
+- Incidents in last 7 days
+- Incidents in last 30 days
+
+**Predictions:**
+- Predicted incidents for next hour (simple moving average)
+- Overall trend status (improving/degrading/stable)
+
+**Example analytics response:**
+```json
+{
+  "total_incidents": 15,
+  "resolved_incidents": 13,
+  "failed_incidents": 2,
+  "success_rate_percent": 86.67,
+  "avg_resolution_time_seconds": 8.5,
+  "median_resolution_time_seconds": 7.2,
+  "fastest_resolution_seconds": 3.1,
+  "slowest_resolution_seconds": 15.3,
+  "cached_fix_usage_count": 7,
+  "cached_fix_rate_percent": 53.85,
+  "ai_calls_made": 6,
+  "most_frequent_incident_type": "SERVICE_DOWN",
+  "most_problematic_type": "DEPENDENCY_FAILURE",
+  "incidents_last_24h": 15,
+  "incidents_last_7d": 15,
+  "incidents_last_30d": 15,
+  "predicted_incidents_next_hour": 2.3,
+  "trend_status": "stable",
+  "hourly_trend": {
+    "label": "Incidents per Hour",
+    "points": [
+      {"timestamp": "2025-01-15T10:00:00Z", "count": 3},
+      {"timestamp": "2025-01-15T11:00:00Z", "count": 5},
+      {"timestamp": "2025-01-15T12:00:00Z", "count": 7}
+    ],
+    "direction": "increasing",
+    "change_rate_percent": 25.5
+  },
+  "type_trends": {
+    "SERVICE_DOWN": {
+      "label": "SERVICE_DOWN",
+      "direction": "stable",
+      "change_rate_percent": 0
+    }
+  }
+}
+```
 
 ## 🔧 Custom Remediation Scripts
 
@@ -462,6 +551,10 @@ err := executor.Rollback(incident)
 - [x] Custom remediation scripts support
 - [x] Rollback capabilities with state capture
 - [x] Enhanced logging and monitoring
+- [x] Advanced analytics and trending system
+- [x] Hourly and daily trend analysis
+- [x] Predictive incident forecasting
+- [x] Hot spot identification
 
 ## 🚧 Future Enhancements
 
@@ -470,7 +563,7 @@ err := executor.Rollback(incident)
 - [ ] Multi-service support
 - [ ] Kubernetes integration
 - [ ] Webhook support for external integrations
-- [ ] Advanced analytics and trending
+- [ ] Machine learning-based predictions
 
 ## 📄 License
 
