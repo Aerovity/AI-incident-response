@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"incident-ai/ai"
+	"incident-ai/analytics"
+	"incident-ai/cloudflare"
 	"incident-ai/memory"
 	"incident-ai/models"
 	"incident-ai/monitor"
@@ -32,28 +34,61 @@ func main() {
 	_ = godotenv.Load()
 
 	// Command line flags
-	apiKey := flag.String("api-key", os.Getenv("CLOUDFLARE_API_KEY"), "Cloudflare API key (or set CLOUDFLARE_API_KEY env var)")
-	accountID := flag.String("account-id", os.Getenv("CLOUDFLARE_ACCOUNT_ID"), "Cloudflare Account ID (or set CLOUDFLARE_ACCOUNT_ID env var)")
 	demo := flag.Bool("demo", false, "Run automated demo scenario")
 	useAI := flag.Bool("use-ai", true, "Use Cloudflare AI for analysis (false = use fallback logic)")
+	setupWrangler := flag.Bool("setup", false, "Setup wrangler configuration")
 	flag.Parse()
 
 	printBanner()
 
-	// Validate API credentials if AI is enabled
-	if *useAI && (*apiKey == "" || *accountID == "") {
-		log.Println("⚠️  No Cloudflare API credentials provided. Using fallback analysis mode.")
-		log.Println("   To use Cloudflare AI: set CLOUDFLARE_API_KEY and CLOUDFLARE_ACCOUNT_ID env vars")
-		*useAI = false
+	// Get Cloudflare credentials via wrangler
+	var apiKey, accountID string
+	if *useAI {
+		config, err := cloudflare.GetCredentials()
+		if err != nil {
+			log.Println("\n⚠️  Cloudflare Authentication Not Found")
+			log.Println("=" + strings.Repeat("=", 60))
+			log.Println("\nTo use Cloudflare AI, you need to authenticate:")
+			log.Println("\n1. Install wrangler (if not already installed):")
+			log.Println("   npm install -g wrangler")
+			log.Println("\n2. Login to Cloudflare:")
+			log.Println("   npx wrangler login")
+			log.Println("\n3. (Optional) Add your account ID to wrangler.toml:")
+			log.Println("   Run: npx wrangler whoami")
+			log.Println("   Copy your Account ID and add to wrangler.toml")
+			log.Println("\nAlternatively, set environment variables:")
+			log.Println("   CLOUDFLARE_API_KEY=your-key")
+			log.Println("   CLOUDFLARE_ACCOUNT_ID=your-account-id")
+			log.Println("\nOr run without AI:")
+			log.Println("   go run main.go -use-ai=false")
+			log.Println("\n" + strings.Repeat("=", 60) + "\n")
+
+			*useAI = false
+			apiKey = ""
+			accountID = ""
+		} else {
+			apiKey = config.APIKey
+			accountID = config.AccountID
+			log.Println("✓ Cloudflare credentials loaded successfully")
+		}
+	}
+
+	// Setup mode
+	if *setupWrangler {
+		if err := setupWranglerAuth(); err != nil {
+			log.Fatalf("Setup failed: %v", err)
+		}
+		return
 	}
 
 	// Initialize components
 	log.Println("\n[SYSTEM] Initializing Incident Response System...")
 
 	targetService := service.NewTargetService(servicePort)
-	analyzer := ai.NewAnalyzer(*apiKey, *accountID)
+	analyzer := ai.NewAnalyzer(apiKey, accountID)
 	executor := remediation.NewExecutor(targetService)
 	store := memory.NewStore(memoryFile)
+	analyticsEngine := analytics.NewEngine()
 	detector := monitor.NewIncidentDetector(
 		fmt.Sprintf("http://localhost:%s", servicePort),
 		checkInterval,
@@ -70,6 +105,13 @@ func main() {
 		stats := store.GetStats()
 		stats["service_uptime"] = time.Since(time.Now().Add(-10 * time.Second)).String() // Simplified
 		return stats
+	})
+
+	// Set up analytics endpoint
+	targetService.SetAnalyticsFunc(func() interface{} {
+		incidents := store.GetAllIncidents()
+		report := analyticsEngine.GenerateReport(incidents)
+		return report
 	})
 
 	// Create orchestrator
@@ -311,10 +353,13 @@ func printUsageInstructions() {
 4. Check service status:
    curl http://localhost:8080/status
 
-5. View metrics and analytics:
+5. View basic metrics:
    curl http://localhost:8080/metrics
 
-6. Press Ctrl+C to stop and see summary
+6. View advanced analytics & trends:
+   curl http://localhost:8080/analytics
+
+7. Press Ctrl+C to stop and see summary
 
 ` + strings.Repeat("=", 70) + "\n"
 
@@ -361,4 +406,43 @@ func runDemo(targetService *service.TargetService) {
 	}
 
 	log.Println("\n[DEMO] Demo complete! Press Ctrl+C to see summary.")
+}
+
+func setupWranglerAuth() error {
+	log.Println("\n🔧 Wrangler Setup Wizard")
+	log.Println("=" + strings.Repeat("=", 60))
+
+	// Check if wrangler is installed
+	log.Println("\n[1/3] Checking for wrangler...")
+	if !cloudflare.CheckWranglerInstalled() {
+		log.Println("❌ Wrangler not found. Please install it first:")
+		log.Println("   npm install -g wrangler")
+		return fmt.Errorf("wrangler not installed")
+	}
+	log.Println("✓ Wrangler is installed")
+
+	// Get account ID from wrangler
+	log.Println("\n[2/3] Getting your Cloudflare Account ID...")
+	accountID, err := cloudflare.GetAccountIDFromWrangler()
+	if err != nil {
+		log.Println("⚠️  Could not get account ID automatically.")
+		log.Println("   Please run: npx wrangler whoami")
+		log.Println("   Then manually add account_id to wrangler.toml")
+		return err
+	}
+	log.Printf("✓ Found Account ID: %s\n", accountID)
+
+	// Update wrangler.toml
+	log.Println("\n[3/3] Updating wrangler.toml...")
+	if err := cloudflare.SetupWranglerConfig(accountID); err != nil {
+		return fmt.Errorf("failed to update config: %w", err)
+	}
+	log.Println("✓ wrangler.toml updated successfully")
+
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("✅ Setup complete! You can now run:")
+	log.Println("   go run main.go")
+	log.Println("=" + strings.Repeat("=", 60) + "\n")
+
+	return nil
 }

@@ -1,0 +1,7 @@
+name = "incident-ai"
+main = "main.go"
+compatibility_date = "2025-01-15"
+
+# Cloudflare Workers AI binding
+[ai]
+binding = "AI"

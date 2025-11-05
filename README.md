@@ -2,8 +2,29 @@
 
 An intelligent incident detection and auto-remediation system built in Go, inspired by incident.io's auto-remediation capabilities. The system uses Cloudflare AI (Llama 3.3) to analyze incidents and automatically apply fixes, while learning from past incidents to respond faster in the future.
 
+## 🎯 Quick Start (3 Steps)
+
+```bash
+# 1. Login to Cloudflare
+npx wrangler login
+
+# 2. Run setup wizard
+go run main.go -setup
+
+# 3. Start the system
+go run main.go
+```
+
+That's it! See [SETUP.md](SETUP.md) for detailed instructions.
+
 ## ✨ Features
 
+### 🆓 Uses Cloudflare's Free AI Models
+- **Llama 3.3 70B** for incident analysis (via Cloudflare Workers AI)
+- **10,000 free AI requests per day** on Cloudflare's free tier
+- No OpenAI API key needed!
+
+### Core Features
 - **🔍 Automatic Incident Detection**: Continuous health monitoring and incident detection
 - **🤖 AI-Powered Analysis**: Uses Cloudflare AI (Llama 3.3) to diagnose root causes and suggest fixes
 - **⚡ Smart Remediation**: Automatically applies fixes to resolve incidents
@@ -46,8 +67,8 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 ### Prerequisites
 
 - Go 1.21 or higher
-- Cloudflare Account with API access (optional - system works with fallback logic if not provided)
-- Cloudflare API Key and Account ID
+- Node.js and npm (for wrangler)
+- Cloudflare Account (free tier works!)
 
 ### Installation
 
@@ -58,7 +79,38 @@ An intelligent incident detection and auto-remediation system built in Go, inspi
 go mod download
 ```
 
-3. Set your Cloudflare credentials (optional):
+3. **Authenticate with Cloudflare (using Wrangler):**
+
+```bash
+# Install wrangler globally (if not already installed)
+npm install -g wrangler
+
+# Login to Cloudflare
+npx wrangler login
+```
+
+This will:
+- Open your browser
+- Ask you to login to Cloudflare
+- Authorize the application
+- Store your credentials locally
+
+4. **(Optional) Setup wrangler configuration:**
+
+```bash
+# Automated setup - will detect your account ID
+go run main.go -setup
+
+# Or manually run:
+npx wrangler whoami
+# Copy your Account ID and add it to wrangler.toml:
+# account_id = "your-account-id-here"
+```
+
+**Alternative: Environment Variables (Legacy)**
+
+If you prefer environment variables instead of wrangler:
+
 ```bash
 # Windows
 set CLOUDFLARE_API_KEY=your-api-key-here
@@ -68,13 +120,6 @@ set CLOUDFLARE_ACCOUNT_ID=your-account-id-here
 export CLOUDFLARE_API_KEY=your-api-key-here
 export CLOUDFLARE_ACCOUNT_ID=your-account-id-here
 ```
-
-**How to get Cloudflare credentials:**
-1. Log in to your Cloudflare dashboard
-2. Go to "Workers & Pages" → "Overview"
-3. Your Account ID is displayed on the right side
-4. For API Key: Go to "My Profile" → "API Tokens" → "Create Token"
-5. Use the "Workers AI" template or create a custom token with Workers AI permissions
 
 ### Running the System
 
@@ -93,9 +138,9 @@ go run main.go -use-ai=false
 go run main.go -demo
 ```
 
-**With explicit credentials:**
+**Setup wizard:**
 ```bash
-go run main.go -api-key=your-api-key -account-id=your-account-id
+go run main.go -setup
 ```
 
 ## 📖 Usage
@@ -149,7 +194,19 @@ The second incident will be resolved instantly using the learned fix!
 curl http://localhost:8080/status
 ```
 
-### 5. View Summary
+### 5. View Advanced Analytics
+
+```bash
+curl http://localhost:8080/analytics
+```
+
+Get comprehensive analytics including:
+- Incident trends (hourly/daily)
+- Resolution time statistics
+- Success rates and predictions
+- Hot spots and problem areas
+
+### 6. View Summary
 
 Press `Ctrl+C` to stop the system and see a summary of all incidents handled.
 
@@ -413,6 +470,8 @@ docker-compose down
 
 ## 📈 Metrics & Analytics
 
+### Basic Metrics
+
 Access real-time metrics via HTTP:
 
 ```bash
@@ -424,8 +483,83 @@ Returns JSON with:
 - Resolution success rate
 - Incidents by type
 - Learned fixes available
-- Average resolution time
-- Priority distribution
+
+### Advanced Analytics & Trending
+
+Access comprehensive analytics and trends:
+
+```bash
+curl http://localhost:8080/analytics
+```
+
+Returns detailed JSON report including:
+
+**Summary Statistics:**
+- Total incidents, resolved, failed
+- Success rate percentage
+- Resolution time statistics (avg, median, fastest, slowest)
+- Cached fix usage rate
+- AI calls made
+
+**Trends:**
+- Hourly incident trend with direction (increasing/decreasing/stable)
+- Daily incident trend with change rate
+- Per-type trends showing which incident types are growing or declining
+
+**Hot Spots:**
+- Most frequent incident type
+- Most problematic type (highest failure rate)
+- Time distribution (incidents by hour of day)
+
+**Recent Activity:**
+- Incidents in last 24 hours
+- Incidents in last 7 days
+- Incidents in last 30 days
+
+**Predictions:**
+- Predicted incidents for next hour (simple moving average)
+- Overall trend status (improving/degrading/stable)
+
+**Example analytics response:**
+```json
+{
+  "total_incidents": 15,
+  "resolved_incidents": 13,
+  "failed_incidents": 2,
+  "success_rate_percent": 86.67,
+  "avg_resolution_time_seconds": 8.5,
+  "median_resolution_time_seconds": 7.2,
+  "fastest_resolution_seconds": 3.1,
+  "slowest_resolution_seconds": 15.3,
+  "cached_fix_usage_count": 7,
+  "cached_fix_rate_percent": 53.85,
+  "ai_calls_made": 6,
+  "most_frequent_incident_type": "SERVICE_DOWN",
+  "most_problematic_type": "DEPENDENCY_FAILURE",
+  "incidents_last_24h": 15,
+  "incidents_last_7d": 15,
+  "incidents_last_30d": 15,
+  "predicted_incidents_next_hour": 2.3,
+  "trend_status": "stable",
+  "hourly_trend": {
+    "label": "Incidents per Hour",
+    "points": [
+      {"timestamp": "2025-01-15T10:00:00Z", "count": 3},
+      {"timestamp": "2025-01-15T11:00:00Z", "count": 5},
+      {"timestamp": "2025-01-15T12:00:00Z", "count": 7}
+    ],
+    "direction": "increasing",
+    "change_rate_percent": 25.5
+  },
+  "type_trends": {
+    "SERVICE_DOWN": {
+      "label": "SERVICE_DOWN",
+      "direction": "stable",
+      "change_rate_percent": 0
+    }
+  }
+}
+```
 
 ## 🔧 Custom Remediation Scripts
 
@@ -462,6 +596,10 @@ err := executor.Rollback(incident)
 - [x] Custom remediation scripts support
 - [x] Rollback capabilities with state capture
 - [x] Enhanced logging and monitoring
+- [x] Advanced analytics and trending system
+- [x] Hourly and daily trend analysis
+- [x] Predictive incident forecasting
+- [x] Hot spot identification
 
 ## 🚧 Future Enhancements
 
@@ -470,7 +608,7 @@ err := executor.Rollback(incident)
 - [ ] Multi-service support
 - [ ] Kubernetes integration
 - [ ] Webhook support for external integrations
-- [ ] Advanced analytics and trending
+- [ ] Machine learning-based predictions
 
 ## 📄 License
 
@@ -482,10 +620,37 @@ This is a demonstration project, but feel free to extend it for your own use cas
 
 ## ❓ Troubleshooting
 
-### "No Cloudflare API credentials provided"
-- Set the `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` environment variables, or
-- Use the `-api-key` and `-account-id` flags, or
-- Run with `-use-ai=false` for fallback mode
+### "Cloudflare Authentication Not Found"
+**Solution 1: Use Wrangler (Recommended)**
+```bash
+# Login to Cloudflare
+npx wrangler login
+
+# Run setup wizard
+go run main.go -setup
+
+# Start the system
+go run main.go
+```
+
+**Solution 2: Use Environment Variables**
+```bash
+# Set credentials manually
+export CLOUDFLARE_API_KEY=your-key
+export CLOUDFLARE_ACCOUNT_ID=your-account-id
+
+# Or run without AI
+go run main.go -use-ai=false
+```
+
+### "Wrangler not found"
+```bash
+# Install wrangler globally
+npm install -g wrangler
+
+# Verify installation
+npx wrangler --version
+```
 
 ### "Port already in use"
 - Stop any other processes using port 8080

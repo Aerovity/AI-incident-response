@@ -21,6 +21,7 @@ type TargetService struct {
 	errorLogs     []string
 	maxLogs       int
 	metricsFunc   func() map[string]interface{}
+	analyticsFunc func() interface{}
 }
 
 // NewTargetService creates a new target service
@@ -64,6 +65,9 @@ func (ts *TargetService) Start() error {
 
 	// Metrics endpoint (placeholder - will be populated by main)
 	mux.HandleFunc("/metrics", ts.handleMetrics)
+
+	// Analytics endpoint
+	mux.HandleFunc("/analytics", ts.handleAnalytics)
 
 	ts.server = &http.Server{
 		Addr:    ":" + ts.port,
@@ -314,4 +318,25 @@ func (ts *TargetService) SetMetricsFunc(f func() map[string]interface{}) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 	ts.metricsFunc = f
+}
+
+// handleAnalytics serves advanced analytics data
+func (ts *TargetService) handleAnalytics(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if ts.analyticsFunc != nil {
+		analytics := ts.analyticsFunc()
+		json.NewEncoder(w).Encode(analytics)
+	} else {
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Analytics not configured",
+		})
+	}
+}
+
+// SetAnalyticsFunc sets the function to retrieve analytics
+func (ts *TargetService) SetAnalyticsFunc(f func() interface{}) {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	ts.analyticsFunc = f
 }
