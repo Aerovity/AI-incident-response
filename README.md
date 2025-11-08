@@ -1,5 +1,5 @@
 # 🔥 AI-Powered Incident Response System
-
+( gonna make it a prototype soon )
 An intelligent incident detection and auto-remediation system built in Go, inspired by incident.io's auto-remediation capabilities. The system uses Cloudflare AI (Llama 3.3) to analyze incidents and automatically apply fixes, while learning from past incidents to respond faster in the future.
 
 ## 🎯 Quick Start (3 Steps)
